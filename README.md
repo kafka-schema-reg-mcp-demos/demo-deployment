@@ -186,16 +186,16 @@ curl -X DELETE "http://localhost:38000/subjects/old-schema?registry=development"
 ### Organization-Based Access Control
 ```yaml
 # .env configuration
-GITHUB_ORG=kafka-schema-mcp-demos
+GITHUB_ORG=kafka-schema-reg-mcp-demos
 GITHUB_TEAM_READ=community
 GITHUB_TEAM_WRITE=developers  
 GITHUB_TEAM_ADMIN=maintainers
 ```
 
 ### Team Permissions
-- **@kafka-schema-mcp-demos/community**: Read access to all schemas
-- **@kafka-schema-mcp-demos/developers**: Write access to dev/staging
-- **@kafka-schema-mcp-demos/maintainers**: Full admin access
+- **@kafka-schema-reg-mcp-demos/community**: Read access to all schemas
+- **@kafka-schema-reg-mcp-demos/developers**: Write access to dev/staging
+- **@kafka-schema-reg-mcp-demos/maintainers**: Full admin access
 
 ## 🛠️ Updated Claude Desktop Configuration
 
@@ -211,7 +211,7 @@ GITHUB_TEAM_ADMIN=maintainers
         "-e", "AUTH_PROVIDER=github",
         "-e", "GITHUB_CLIENT_ID",
         "-e", "GITHUB_CLIENT_SECRET",
-        "-e", "GITHUB_ORG=kafka-schema-mcp-demos",
+        "-e", "GITHUB_ORG=kafka-schema-reg-mcp-demos",
         "-e", "SCHEMA_REGISTRY_NAME_1=development",
         "-e", "SCHEMA_REGISTRY_URL_1=http://dev-registry:8081",
         "-e", "SCHEMA_REGISTRY_NAME_2=staging", 
@@ -288,7 +288,7 @@ curl -H "Authorization: Bearer $GITHUB_TOKEN" \
 
 ## 📚 Next Steps
 
-1. **Create GitHub Organization**: `kafka-schema-mcp-demos`
+1. **Create GitHub Organization**: `kafka-schema-reg-mcp-demos`
 2. **Set Up Teams**: Configure read/write/admin teams
 3. **Deploy to Cloud**: Public demo with custom domain
 4. **Community Building**: Invite users to try the demo
@@ -297,7 +297,7 @@ curl -H "Authorization: Bearer $GITHUB_TOKEN" \
 
 🎉 **Experience the power of Schema Registry management with familiar GitHub authentication!**
 
-📱 **Join our GitHub organization**: [kafka-schema-mcp-demos](https://github.com/kafka-schema-mcp-demos) (to be created)
+📱 **Join our GitHub organization**: [kafka-schema-reg-mcp-demos](https://github.com/kafka-schema-reg-mcp-demos) (to be created)
 
 ⭐ **Star this repository** to help others discover this demo!
 
