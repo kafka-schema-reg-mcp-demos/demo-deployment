@@ -1,1 +1,240 @@
-# Kafka Schema Registry MCP Demo Environment - GitHub OAuth Edition\n# Simplified setup with GitHub OAuth instead of Keycloak\n\nversion: '3.8'\n\nservices:\n  # ===========================================\n  # Kafka Infrastructure\n  # ===========================================\n  \n  # Shared Kafka instance for all registries\n  kafka:\n    image: confluentinc/cp-kafka:latest\n    container_name: demo-kafka\n    environment:\n      KAFKA_NODE_ID: 1\n      KAFKA_PROCESS_ROLES: broker,controller\n      KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:9092,CONTROLLER://0.0.0.0:9093\n      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092\n      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@kafka:9093\n      KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER\n      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,CONTROLLER:PLAINTEXT\n      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1\n      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1\n      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1\n      KAFKA_LOG_DIRS: /var/lib/kafka/data\n      CLUSTER_ID: demo-cluster-kafka-schema-mcp\n    volumes:\n      - kafka-data:/var/lib/kafka/data\n    ports:\n      - \"9092:9092\"\n    healthcheck:\n      test: kafka-topics --bootstrap-server localhost:9092 --list\n      interval: 10s\n      timeout: 5s\n      retries: 5\n\n  # ===========================================\n  # Schema Registry Instances\n  # ===========================================\n\n  # Development Schema Registry - Full Access\n  dev-registry:\n    image: confluentinc/cp-schema-registry:latest\n    container_name: demo-dev-registry\n    depends_on:\n      kafka:\n        condition: service_healthy\n    environment:\n      SCHEMA_REGISTRY_HOST_NAME: dev-registry\n      SCHEMA_REGISTRY_KAFKASTORE_BOOTSTRAP_SERVERS: kafka:9092\n      SCHEMA_REGISTRY_LISTENERS: http://0.0.0.0:8081\n      SCHEMA_REGISTRY_SCHEMA_REGISTRY_GROUP_ID: dev-schema-registry\n      SCHEMA_REGISTRY_KAFKASTORE_TOPIC: _schemas_dev\n      SCHEMA_REGISTRY_DEBUG: true\n    ports:\n      - \"8081:8081\"\n    healthcheck:\n      test: curl -f http://localhost:8081/subjects || exit 1\n      interval: 10s\n      timeout: 5s\n      retries: 5\n\n  # Staging Schema Registry - Limited Write Access  \n  staging-registry:\n    image: confluentinc/cp-schema-registry:latest\n    container_name: demo-staging-registry\n    depends_on:\n      kafka:\n        condition: service_healthy\n    environment:\n      SCHEMA_REGISTRY_HOST_NAME: staging-registry\n      SCHEMA_REGISTRY_KAFKASTORE_BOOTSTRAP_SERVERS: kafka:9092\n      SCHEMA_REGISTRY_LISTENERS: http://0.0.0.0:8081\n      SCHEMA_REGISTRY_SCHEMA_REGISTRY_GROUP_ID: staging-schema-registry\n      SCHEMA_REGISTRY_KAFKASTORE_TOPIC: _schemas_staging\n    ports:\n      - \"8082:8081\"\n    healthcheck:\n      test: curl -f http://localhost:8081/subjects || exit 1\n      interval: 10s\n      timeout: 5s\n      retries: 5\n\n  # Production Schema Registry - Read-Only for Most Users\n  prod-registry:\n    image: confluentinc/cp-schema-registry:latest\n    container_name: demo-prod-registry\n    depends_on:\n      kafka:\n        condition: service_healthy\n    environment:\n      SCHEMA_REGISTRY_HOST_NAME: prod-registry\n      SCHEMA_REGISTRY_KAFKASTORE_BOOTSTRAP_SERVERS: kafka:9092\n      SCHEMA_REGISTRY_LISTENERS: http://0.0.0.0:8081\n      SCHEMA_REGISTRY_SCHEMA_REGISTRY_GROUP_ID: prod-schema-registry\n      SCHEMA_REGISTRY_KAFKASTORE_TOPIC: _schemas_prod\n    ports:\n      - \"8083:8081\"\n    healthcheck:\n      test: curl -f http://localhost:8081/subjects || exit 1\n      interval: 10s\n      timeout: 5s\n      retries: 5\n\n  # ===========================================\n  # MCP Server - Multi-Registry with GitHub OAuth\n  # ===========================================\n  \n  mcp-server:\n    image: aywengo/kafka-schema-reg-mcp:stable\n    container_name: demo-mcp-server\n    depends_on:\n      dev-registry:\n        condition: service_healthy\n      staging-registry:\n        condition: service_healthy\n      prod-registry:\n        condition: service_healthy\n    environment:\n      # GitHub OAuth Configuration\n      ENABLE_AUTH: \"true\"\n      AUTH_PROVIDER: \"github\"\n      GITHUB_CLIENT_ID: \"${GITHUB_CLIENT_ID}\"\n      GITHUB_CLIENT_SECRET: \"${GITHUB_CLIENT_SECRET}\"\n      GITHUB_ORG: \"${GITHUB_ORG:-kafka-schema-mcp-demos}\"\n      GITHUB_CALLBACK_URL: \"http://localhost:38000/auth/callback\"\n      \n      # GitHub Team Mapping (Optional)\n      GITHUB_TEAM_READ: \"${GITHUB_TEAM_READ:-community}\"\n      GITHUB_TEAM_WRITE: \"${GITHUB_TEAM_WRITE:-developers}\"\n      GITHUB_TEAM_ADMIN: \"${GITHUB_TEAM_ADMIN:-maintainers}\"\n      \n      # Multi-Registry Configuration\n      SCHEMA_REGISTRY_NAME_1: \"development\"\n      SCHEMA_REGISTRY_URL_1: \"http://dev-registry:8081\"\n      READONLY_1: \"false\"\n      \n      SCHEMA_REGISTRY_NAME_2: \"staging\"\n      SCHEMA_REGISTRY_URL_2: \"http://staging-registry:8081\"\n      READONLY_2: \"false\"\n      \n      SCHEMA_REGISTRY_NAME_3: \"production\"\n      SCHEMA_REGISTRY_URL_3: \"http://prod-registry:8081\"\n      READONLY_3: \"true\"\n      \n      # Development Mode (for local testing without OAuth)\n      DEV_MODE: \"${DEV_MODE:-false}\"\n      DEV_GITHUB_TOKEN: \"${DEV_GITHUB_TOKEN:-}\"\n    ports:\n      - \"38000:8000\"\n    volumes:\n      - ./scripts:/opt/scripts\n    healthcheck:\n      test: curl -f http://localhost:8000/health || exit 1\n      interval: 10s\n      timeout: 5s\n      retries: 5\n\n  # ===========================================\n  # Demo Web UI with GitHub OAuth\n  # ===========================================\n  \n  demo-ui:\n    build:\n      context: ./demo-ui\n      dockerfile: Dockerfile\n    container_name: demo-web-ui\n    depends_on:\n      mcp-server:\n        condition: service_healthy\n    environment:\n      REACT_APP_MCP_SERVER_URL: http://localhost:38000\n      REACT_APP_GITHUB_CLIENT_ID: \"${GITHUB_CLIENT_ID}\"\n      REACT_APP_GITHUB_ORG: \"${GITHUB_ORG:-kafka-schema-mcp-demos}\"\n      REACT_APP_AUTH_PROVIDER: github\n    ports:\n      - \"3000:3000\"\n    volumes:\n      - ./demo-ui/src:/app/src\n      - ./demo-ui/public:/app/public\n\n  # ===========================================\n  # Monitoring (Optional)\n  # ===========================================\n  \n  prometheus:\n    image: prom/prometheus:latest\n    container_name: demo-prometheus\n    command:\n      - '--config.file=/etc/prometheus/prometheus.yml'\n      - '--storage.tsdb.path=/prometheus'\n      - '--web.console.libraries=/etc/prometheus/console_libraries'\n      - '--web.console.templates=/etc/prometheus/consoles'\n      - '--web.enable-lifecycle'\n    ports:\n      - \"9090:9090\"\n    volumes:\n      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml\n      - prometheus-data:/prometheus\n\n  grafana:\n    image: grafana/grafana:latest\n    container_name: demo-grafana\n    environment:\n      GF_SECURITY_ADMIN_PASSWORD: admin123\n      GF_AUTH_GITHUB_ENABLED: \"true\"\n      GF_AUTH_GITHUB_CLIENT_ID: \"${GITHUB_CLIENT_ID}\"\n      GF_AUTH_GITHUB_CLIENT_SECRET: \"${GITHUB_CLIENT_SECRET}\"\n      GF_AUTH_GITHUB_SCOPES: \"user:email,read:org\"\n      GF_AUTH_GITHUB_AUTH_URL: \"https://github.com/login/oauth/authorize\"\n      GF_AUTH_GITHUB_TOKEN_URL: \"https://github.com/login/oauth/access_token\"\n      GF_AUTH_GITHUB_API_URL: \"https://api.github.com/user\"\n      GF_AUTH_GITHUB_ALLOWED_ORGANIZATIONS: \"${GITHUB_ORG:-kafka-schema-mcp-demos}\"\n    ports:\n      - \"3001:3000\"\n    volumes:\n      - grafana-data:/var/lib/grafana\n      - ./monitoring/grafana/dashboards:/etc/grafana/provisioning/dashboards\n      - ./monitoring/grafana/datasources:/etc/grafana/provisioning/datasources\n\nvolumes:\n  kafka-data:\n  prometheus-data:\n  grafana-data:\n\nnetworks:\n  default:\n    name: kafka-schema-mcp-demo\n\n# ===========================================\n# GitHub OAuth Benefits:\n# ===========================================\n# ✅ Simplified setup (no Keycloak)\n# ✅ Faster startup time\n# ✅ Developer-friendly authentication\n# ✅ Real OAuth flows\n# ✅ Organization/team integration\n# ✅ Reduced resource usage\n# ✅ Production-ready OAuth provider"
+# Kafka Schema Registry MCP Demo Environment - GitHub OAuth Edition
+# Simplified setup with GitHub OAuth instead of Keycloak
+
+version: '3.8'
+
+services:
+  # ===========================================
+  # Kafka Infrastructure
+  # ===========================================
+  
+  # Shared Kafka instance for all registries
+  kafka:
+    image: confluentinc/cp-kafka:latest
+    container_name: demo-kafka
+    environment:
+      KAFKA_NODE_ID: 1
+      KAFKA_PROCESS_ROLES: broker,controller
+      KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:9092,CONTROLLER://0.0.0.0:9093
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092
+      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@kafka:9093
+      KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,CONTROLLER:PLAINTEXT
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      KAFKA_LOG_DIRS: /var/lib/kafka/data
+      CLUSTER_ID: demo-cluster-kafka-schema-mcp
+    volumes:
+      - kafka-data:/var/lib/kafka/data
+    ports:
+      - "9092:9092"
+    healthcheck:
+      test: kafka-topics --bootstrap-server localhost:9092 --list
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ===========================================
+  # Schema Registry Instances
+  # ===========================================
+
+  # Development Schema Registry - Full Access
+  dev-registry:
+    image: confluentinc/cp-schema-registry:latest
+    container_name: demo-dev-registry
+    depends_on:
+      kafka:
+        condition: service_healthy
+    environment:
+      SCHEMA_REGISTRY_HOST_NAME: dev-registry
+      SCHEMA_REGISTRY_KAFKASTORE_BOOTSTRAP_SERVERS: kafka:9092
+      SCHEMA_REGISTRY_LISTENERS: http://0.0.0.0:8081
+      SCHEMA_REGISTRY_SCHEMA_REGISTRY_GROUP_ID: dev-schema-registry
+      SCHEMA_REGISTRY_KAFKASTORE_TOPIC: _schemas_dev
+      SCHEMA_REGISTRY_DEBUG: true
+    ports:
+      - "8081:8081"
+    healthcheck:
+      test: curl -f http://localhost:8081/subjects || exit 1
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Staging Schema Registry - Limited Write Access  
+  staging-registry:
+    image: confluentinc/cp-schema-registry:latest
+    container_name: demo-staging-registry
+    depends_on:
+      kafka:
+        condition: service_healthy
+    environment:
+      SCHEMA_REGISTRY_HOST_NAME: staging-registry
+      SCHEMA_REGISTRY_KAFKASTORE_BOOTSTRAP_SERVERS: kafka:9092
+      SCHEMA_REGISTRY_LISTENERS: http://0.0.0.0:8081
+      SCHEMA_REGISTRY_SCHEMA_REGISTRY_GROUP_ID: staging-schema-registry
+      SCHEMA_REGISTRY_KAFKASTORE_TOPIC: _schemas_staging
+    ports:
+      - "8082:8081"
+    healthcheck:
+      test: curl -f http://localhost:8081/subjects || exit 1
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Production Schema Registry - Read-Only for Most Users
+  prod-registry:
+    image: confluentinc/cp-schema-registry:latest
+    container_name: demo-prod-registry
+    depends_on:
+      kafka:
+        condition: service_healthy
+    environment:
+      SCHEMA_REGISTRY_HOST_NAME: prod-registry
+      SCHEMA_REGISTRY_KAFKASTORE_BOOTSTRAP_SERVERS: kafka:9092
+      SCHEMA_REGISTRY_LISTENERS: http://0.0.0.0:8081
+      SCHEMA_REGISTRY_SCHEMA_REGISTRY_GROUP_ID: prod-schema-registry
+      SCHEMA_REGISTRY_KAFKASTORE_TOPIC: _schemas_prod
+    ports:
+      - "8083:8081"
+    healthcheck:
+      test: curl -f http://localhost:8081/subjects || exit 1
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ===========================================
+  # MCP Server - Multi-Registry with GitHub OAuth
+  # ===========================================
+  
+  mcp-server:
+    image: aywengo/kafka-schema-reg-mcp:stable
+    container_name: demo-mcp-server
+    depends_on:
+      dev-registry:
+        condition: service_healthy
+      staging-registry:
+        condition: service_healthy
+      prod-registry:
+        condition: service_healthy
+    environment:
+      # GitHub OAuth Configuration
+      ENABLE_AUTH: "true"
+      AUTH_PROVIDER: "github"
+      GITHUB_CLIENT_ID: "${GITHUB_CLIENT_ID}"
+      GITHUB_CLIENT_SECRET: "${GITHUB_CLIENT_SECRET}"
+      GITHUB_ORG: "${GITHUB_ORG:-kafka-schema-mcp-demos}"
+      GITHUB_CALLBACK_URL: "http://localhost:38000/auth/callback"
+      
+      # GitHub Team Mapping (Optional)
+      GITHUB_TEAM_READ: "${GITHUB_TEAM_READ:-community}"
+      GITHUB_TEAM_WRITE: "${GITHUB_TEAM_WRITE:-developers}"
+      GITHUB_TEAM_ADMIN: "${GITHUB_TEAM_ADMIN:-maintainers}"
+      
+      # Multi-Registry Configuration
+      SCHEMA_REGISTRY_NAME_1: "development"
+      SCHEMA_REGISTRY_URL_1: "http://dev-registry:8081"
+      READONLY_1: "false"
+      
+      SCHEMA_REGISTRY_NAME_2: "staging"
+      SCHEMA_REGISTRY_URL_2: "http://staging-registry:8081"
+      READONLY_2: "false"
+      
+      SCHEMA_REGISTRY_NAME_3: "production"
+      SCHEMA_REGISTRY_URL_3: "http://prod-registry:8081"
+      READONLY_3: "true"
+      
+      # Development Mode (for local testing without OAuth)
+      DEV_MODE: "${DEV_MODE:-false}"
+      DEV_GITHUB_TOKEN: "${DEV_GITHUB_TOKEN:-}"
+    ports:
+      - "38000:8000"
+    volumes:
+      - ./scripts:/opt/scripts
+    healthcheck:
+      test: curl -f http://localhost:8000/health || exit 1
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ===========================================
+  # Demo Web UI with GitHub OAuth
+  # ===========================================
+  
+  demo-ui:
+    build:
+      context: ./demo-ui
+      dockerfile: Dockerfile
+    container_name: demo-web-ui
+    depends_on:
+      mcp-server:
+        condition: service_healthy
+    environment:
+      REACT_APP_MCP_SERVER_URL: http://localhost:38000
+      REACT_APP_GITHUB_CLIENT_ID: "${GITHUB_CLIENT_ID}"
+      REACT_APP_GITHUB_ORG: "${GITHUB_ORG:-kafka-schema-mcp-demos}"
+      REACT_APP_AUTH_PROVIDER: github
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./demo-ui/src:/app/src
+      - ./demo-ui/public:/app/public
+
+  # ===========================================
+  # Monitoring (Optional)
+  # ===========================================
+  
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: demo-prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/etc/prometheus/console_libraries'
+      - '--web.console.templates=/etc/prometheus/consoles'
+      - '--web.enable-lifecycle'
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml
+      - prometheus-data:/prometheus
+
+  grafana:
+    image: grafana/grafana:latest
+    container_name: demo-grafana
+    environment:
+      GF_SECURITY_ADMIN_PASSWORD: admin123
+      GF_AUTH_GITHUB_ENABLED: "true"
+      GF_AUTH_GITHUB_CLIENT_ID: "${GITHUB_CLIENT_ID}"
+      GF_AUTH_GITHUB_CLIENT_SECRET: "${GITHUB_CLIENT_SECRET}"
+      GF_AUTH_GITHUB_SCOPES: "user:email,read:org"
+      GF_AUTH_GITHUB_AUTH_URL: "https://github.com/login/oauth/authorize"
+      GF_AUTH_GITHUB_TOKEN_URL: "https://github.com/login/oauth/access_token"
+      GF_AUTH_GITHUB_API_URL: "https://api.github.com/user"
+      GF_AUTH_GITHUB_ALLOWED_ORGANIZATIONS: "${GITHUB_ORG:-kafka-schema-mcp-demos}"
+    ports:
+      - "3001:3000"
+    volumes:
+      - grafana-data:/var/lib/grafana
+      - ./monitoring/grafana/dashboards:/etc/grafana/provisioning/dashboards
+      - ./monitoring/grafana/datasources:/etc/grafana/provisioning/datasources
+
+volumes:
+  kafka-data:
+  prometheus-data:
+  grafana-data:
+
+networks:
+  default:
+    name: kafka-schema-mcp-demo
+
+# ===========================================
+# GitHub OAuth Benefits:
+# ===========================================
+# ✅ Simplified setup (no Keycloak)
+# ✅ Faster startup time
+# ✅ Developer-friendly authentication
+# ✅ Real OAuth flows
+# ✅ Organization/team integration
+# ✅ Reduced resource usage
+# ✅ Production-ready OAuth provider
