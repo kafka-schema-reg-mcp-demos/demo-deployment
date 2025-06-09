@@ -219,7 +219,7 @@ GITHUB_TEAM_ADMIN=maintainers
         "-e", "SCHEMA_REGISTRY_NAME_3=production",
         "-e", "SCHEMA_REGISTRY_URL_3=http://prod-registry:8081",
         "-e", "READONLY_3=true",
-        "kafka-schema-reg-mcp-demos/kafka-schema-reg-mcp:stable"
+        "kafka-schema-reg-mcp-demos/kafka-schema-reg-mcp:v2.0.0-rc1"
       ],
       "env": {
         "GITHUB_CLIENT_ID": "your_github_client_id",
