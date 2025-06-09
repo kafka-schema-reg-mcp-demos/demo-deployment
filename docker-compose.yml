@@ -1,0 +1,225 @@
+# Kafka Schema Registry MCP Demo Environment
+# Multi-registry setup with OAuth authentication
+
+version: '3.8'
+
+services:
+  # ===========================================
+  # Kafka Infrastructure
+  # ===========================================
+  
+  # Shared Kafka instance for all registries
+  kafka:
+    image: confluentinc/cp-kafka:latest
+    container_name: demo-kafka
+    environment:
+      KAFKA_NODE_ID: 1
+      KAFKA_PROCESS_ROLES: broker,controller
+      KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:9092,CONTROLLER://0.0.0.0:9093
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092
+      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@kafka:9093
+      KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,CONTROLLER:PLAINTEXT
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      KAFKA_LOG_DIRS: /var/lib/kafka/data
+      CLUSTER_ID: demo-cluster-kafka-schema-mcp
+    volumes:
+      - kafka-data:/var/lib/kafka/data
+    ports:
+      - "9092:9092"
+    healthcheck:
+      test: kafka-topics --bootstrap-server localhost:9092 --list
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ===========================================
+  # Schema Registry Instances
+  # ===========================================
+
+  # Development Schema Registry - Full Access
+  dev-registry:
+    image: confluentinc/cp-schema-registry:latest
+    container_name: demo-dev-registry
+    depends_on:
+      kafka:
+        condition: service_healthy
+    environment:
+      SCHEMA_REGISTRY_HOST_NAME: dev-registry
+      SCHEMA_REGISTRY_KAFKASTORE_BOOTSTRAP_SERVERS: kafka:9092
+      SCHEMA_REGISTRY_LISTENERS: http://0.0.0.0:8081
+      SCHEMA_REGISTRY_SCHEMA_REGISTRY_GROUP_ID: dev-schema-registry
+      SCHEMA_REGISTRY_KAFKASTORE_TOPIC: _schemas_dev
+      SCHEMA_REGISTRY_DEBUG: true
+    ports:
+      - "8081:8081"
+    healthcheck:
+      test: curl -f http://localhost:8081/subjects || exit 1
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Staging Schema Registry - Limited Write Access  
+  staging-registry:
+    image: confluentinc/cp-schema-registry:latest
+    container_name: demo-staging-registry
+    depends_on:
+      kafka:
+        condition: service_healthy
+    environment:
+      SCHEMA_REGISTRY_HOST_NAME: staging-registry
+      SCHEMA_REGISTRY_KAFKASTORE_BOOTSTRAP_SERVERS: kafka:9092
+      SCHEMA_REGISTRY_LISTENERS: http://0.0.0.0:8081
+      SCHEMA_REGISTRY_SCHEMA_REGISTRY_GROUP_ID: staging-schema-registry
+      SCHEMA_REGISTRY_KAFKASTORE_TOPIC: _schemas_staging
+    ports:
+      - "8082:8081"
+    healthcheck:
+      test: curl -f http://localhost:8081/subjects || exit 1
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Production Schema Registry - Read-Only for Most Users
+  prod-registry:
+    image: confluentinc/cp-schema-registry:latest
+    container_name: demo-prod-registry
+    depends_on:
+      kafka:
+        condition: service_healthy
+    environment:
+      SCHEMA_REGISTRY_HOST_NAME: prod-registry
+      SCHEMA_REGISTRY_KAFKASTORE_BOOTSTRAP_SERVERS: kafka:9092
+      SCHEMA_REGISTRY_LISTENERS: http://0.0.0.0:8081
+      SCHEMA_REGISTRY_SCHEMA_REGISTRY_GROUP_ID: prod-schema-registry
+      SCHEMA_REGISTRY_KAFKASTORE_TOPIC: _schemas_prod
+    ports:
+      - "8083:8081"
+    healthcheck:
+      test: curl -f http://localhost:8081/subjects || exit 1
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ===========================================
+  # OAuth Provider (Keycloak)
+  # ===========================================
+  
+  oauth-provider:
+    image: quay.io/keycloak/keycloak:latest
+    container_name: demo-oauth
+    command: start-dev
+    environment:
+      KC_HOSTNAME: localhost
+      KC_HOSTNAME_PORT: 8080
+      KC_HOSTNAME_STRICT_BACKCHANNEL: false
+      KC_HTTP_ENABLED: true
+      KC_HOSTNAME_STRICT_HTTPS: false
+      KC_HEALTH_ENABLED: true
+      KEYCLOAK_ADMIN: admin
+      KEYCLOAK_ADMIN_PASSWORD: admin123
+      KC_DB: h2
+    ports:
+      - "8080:8080"
+    volumes:
+      - keycloak-data:/opt/keycloak/data
+      - ./keycloak/realm-export.json:/opt/keycloak/data/import/realm-export.json
+    healthcheck:
+      test: curl -f http://localhost:8080/health/ready || exit 1
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+  # ===========================================
+  # MCP Server - Multi-Registry with OAuth
+  # ===========================================
+  
+  mcp-server:
+    image: aywengo/kafka-schema-reg-mcp:stable
+    container_name: demo-mcp-server
+    depends_on:
+      dev-registry:
+        condition: service_healthy
+      staging-registry:
+        condition: service_healthy
+      prod-registry:
+        condition: service_healthy
+      oauth-provider:
+        condition: service_healthy
+    environment:
+      # OAuth Configuration
+      ENABLE_AUTH: "true"
+      AUTH_ISSUER_URL: "http://oauth-provider:8080/realms/demo"
+      AUTH_VALID_SCOPES: "read,write,admin"
+      AUTH_DEFAULT_SCOPES: "read"
+      AUTH_REQUIRED_SCOPES: "read"
+      AUTH_CLIENT_REG_ENABLED: "true"
+      AUTH_REVOCATION_ENABLED: "true"
+      
+      # Multi-Registry Configuration
+      SCHEMA_REGISTRY_NAME_1: "development"
+      SCHEMA_REGISTRY_URL_1: "http://dev-registry:8081"
+      READONLY_1: "false"
+      
+      SCHEMA_REGISTRY_NAME_2: "staging"
+      SCHEMA_REGISTRY_URL_2: "http://staging-registry:8081"
+      READONLY_2: "false"
+      
+      SCHEMA_REGISTRY_NAME_3: "production"
+      SCHEMA_REGISTRY_URL_3: "http://prod-registry:8081"
+      READONLY_3: "true"
+      
+      # Development Token for Testing
+      OAUTH_TOKEN: "dev-token-read,write,admin"
+    ports:
+      - "38000:8000"
+    volumes:
+      - ./scripts:/opt/scripts
+    healthcheck:
+      test: curl -f http://localhost:8000/health || exit 1
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ===========================================
+  # Monitoring (Optional)
+  # ===========================================
+  
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: demo-prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/etc/prometheus/console_libraries'
+      - '--web.console.templates=/etc/prometheus/consoles'
+      - '--web.enable-lifecycle'
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml
+      - prometheus-data:/prometheus
+
+  grafana:
+    image: grafana/grafana:latest
+    container_name: demo-grafana
+    environment:
+      GF_SECURITY_ADMIN_PASSWORD: admin123
+    ports:
+      - "3001:3000"
+    volumes:
+      - grafana-data:/var/lib/grafana
+      - ./monitoring/grafana/dashboards:/etc/grafana/provisioning/dashboards
+      - ./monitoring/grafana/datasources:/etc/grafana/provisioning/datasources
+
+volumes:
+  kafka-data:
+  keycloak-data:
+  prometheus-data:
+  grafana-data:
+
+networks:
+  default:
+    name: kafka-schema-mcp-demo
