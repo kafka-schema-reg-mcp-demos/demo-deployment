@@ -1,1 +1,304 @@
-# Kafka Schema Registry MCP Demo - GitHub OAuth Edition\n\n🚀 **Complete demo environment for the Kafka Schema Registry MCP Server with GitHub OAuth**\n\nThis repository contains everything needed to deploy a comprehensive demo showcasing the capabilities of the [Kafka Schema Registry MCP Server](https://github.com/aywengo/kafka-schema-reg-mcp) with **GitHub OAuth authentication**, multi-registry support, and real-world use cases.\n\n## 🎯 What's New: GitHub OAuth Integration\n\n### Why GitHub OAuth?\n- **Developer-Friendly**: Most developers already have GitHub accounts\n- **Simplified Setup**: No need to run separate OAuth provider\n- **Real OAuth Flows**: Authentic OAuth experience developers understand\n- **Organization Integration**: Natural fit with GitHub organization membership\n- **Production Ready**: Battle-tested OAuth provider\n\n### OAuth Scopes Mapping\n| GitHub Scope | MCP Permission | Description |\n|--------------|----------------|-------------|\n| `public_repo` | `read` | View public schemas and configurations |\n| `repo` | `write` | Register schemas, update configs (+ read) |\n| `admin:org` | `admin` | Delete subjects, manage registries (+ write + read) |\n\n## 🏗️ Architecture Overview\n```\n┌─────────────────┐    ┌──────────────────┐    ┌─────────────────┐\n│   Development   │    │     Staging      │    │   Production    │\n│   Registry      │    │    Registry      │    │    Registry     │\n│   :8081         │    │     :8082        │    │     :8083       │\n│   (Full Access) │    │ (Limited Write)  │    │   (Read-Only)   │\n└─────────────────┘    └──────────────────┘    └─────────────────┘\n         │                       │                       │\n         └───────────────────────┼───────────────────────┘\n                                 │\n                    ┌─────────────────────────┐\n                    │       MCP Server        │\n                    │   (Multi-Registry)      │\n                    │   GitHub OAuth          │\n                    │      :38000             │\n                    └─────────────────────────┘\n                                 │\n                    ┌─────────────────────────┐\n                    │    GitHub OAuth         │\n                    │   (github.com)          │\n                    │   User Authentication   │\n                    └─────────────────────────┘\n```\n\n## 🚀 Quick Start\n\n### Prerequisites\n- Docker and Docker Compose\n- GitHub account\n- 6GB+ RAM (reduced from 8GB - no Keycloak needed!)\n- Ports 3000, 8081-8083, 9090-9092, 38000 available\n\n### 1. Create GitHub OAuth App\n\n1. Go to GitHub Settings → Developer settings → OAuth Apps\n2. Click \"New OAuth App\"\n3. Fill in:\n   - **Application name**: `Kafka Schema Registry MCP Demo`\n   - **Homepage URL**: `http://localhost:3000`\n   - **Authorization callback URL**: `http://localhost:38000/auth/callback`\n4. Copy the **Client ID** and **Client Secret**\n\n### 2. Clone and Configure\n```bash\n# Clone the repository\ngit clone https://github.com/aywengo/demo-deployment.git\ncd demo-deployment\n\n# Create environment file\ncp .env.example .env\n\n# Edit .env with your GitHub OAuth credentials\nvim .env  # Add your GITHUB_CLIENT_ID and GITHUB_CLIENT_SECRET\n```\n\n### 3. Start the Demo\n```bash\n# Start the complete demo environment\ndocker-compose -f docker-compose.github-oauth.yml up -d\n\n# Wait for services to be ready (1-2 minutes, faster without Keycloak!)\ndocker-compose ps\n```\n\n### 4. Load Demo Data\n```bash\n# Populate with realistic demo schemas\n./scripts/setup-demo-data.sh\n```\n\n## 🔐 GitHub OAuth Authentication Flow\n\n### User Experience\n1. **Access Demo**: Visit http://localhost:3000\n2. **Login with GitHub**: Click \"Sign in with GitHub\"\n3. **Authorize Application**: Grant permissions to the demo app\n4. **Access Based on Permissions**: Different features based on GitHub scopes\n\n### Permission Levels\n```bash\n# Public Repository Access (Read-Only)\n# GitHub users with public_repo scope\ncurl -H \"Authorization: Bearer github_token_public\" \\\n  http://localhost:38000/subjects\n\n# Private Repository Access (Read + Write)\n# GitHub users with repo scope  \ncurl -X POST http://localhost:38000/schemas \\\n  -H \"Authorization: Bearer github_token_repo\" \\\n  -d '{\"registry\":\"development\",\"subject\":\"test\",\"schema\":{\"type\":\"string\"}}'\n\n# Organization Admin (Full Access)\n# GitHub organization owners/admins\ncurl -X DELETE http://localhost:38000/subjects/test \\\n  -H \"Authorization: Bearer github_token_admin\"\n```\n\n## 🎭 Demo Scenarios with GitHub OAuth\n\n### Scenario 1: Open Source Contributor (public_repo)\n**Persona**: Community member contributing to public schemas\n\n```bash\n# Login as GitHub user with public_repo access\n# Can view all public schemas and registries\ncurl -H \"Authorization: Bearer $GITHUB_TOKEN\" \\\n  http://localhost:38000/subjects?registry=development\n\n# Can export schemas for documentation\ncurl -H \"Authorization: Bearer $GITHUB_TOKEN\" \\\n  \"http://localhost:38000/export/schema/user-profile?registry=development&context=ecommerce\"\n```\n\n### Scenario 2: Development Team Member (repo)\n**Persona**: Team member working on schema evolution\n\n```bash\n# Can register and modify schemas\ncurl -X POST http://localhost:38000/schemas \\\n  -H \"Authorization: Bearer $GITHUB_TOKEN\" \\\n  -d '{\n    \"registry\": \"development\",\n    \"context\": \"ecommerce\",\n    \"subject\": \"product-events\",\n    \"schema\": {\n      \"type\": \"record\",\n      \"name\": \"ProductEvent\",\n      \"fields\": [\n        {\"name\": \"product_id\", \"type\": \"string\"},\n        {\"name\": \"event_type\", \"type\": \"string\"},\n        {\"name\": \"timestamp\", \"type\": \"long\"}\n      ]\n    }\n  }'\n\n# Can test compatibility\ncurl -X POST http://localhost:38000/compatibility \\\n  -H \"Authorization: Bearer $GITHUB_TOKEN\" \\\n  -d '{...schema_evolution...}'\n```\n\n### Scenario 3: Platform Administrator (admin:org)\n**Persona**: Organization owner managing production schemas\n\n```bash\n# Can manage production registries\ncurl -X POST http://localhost:38000/migrate \\\n  -H \"Authorization: Bearer $GITHUB_TOKEN\" \\\n  -d '{\n    \"source_registry\": \"staging\",\n    \"target_registry\": \"production\",\n    \"subject\": \"user-profile\",\n    \"migrate_all_versions\": true\n  }'\n\n# Can delete subjects (with admin permissions)\ncurl -X DELETE \"http://localhost:38000/subjects/old-schema?registry=development\" \\\n  -H \"Authorization: Bearer $GITHUB_TOKEN\"\n```\n\n## 🌟 GitHub Organization Integration\n\n### Organization-Based Access Control\n```yaml\n# .env configuration\nGITHUB_ORG=kafka-schema-mcp-demos\nGITHUB_TEAM_READ=community\nGITHUB_TEAM_WRITE=developers  \nGITHUB_TEAM_ADMIN=maintainers\n```\n\n### Team Permissions\n- **@kafka-schema-mcp-demos/community**: Read access to all schemas\n- **@kafka-schema-mcp-demos/developers**: Write access to dev/staging\n- **@kafka-schema-mcp-demos/maintainers**: Full admin access\n\n## 🛠️ Updated Claude Desktop Configuration\n\n```json\n{\n  \"mcpServers\": {\n    \"kafka-schema-registry-demo\": {\n      \"command\": \"docker\",\n      \"args\": [\n        \"run\", \"--rm\", \"-i\",\n        \"--network\", \"kafka-schema-mcp-demo\",\n        \"-e\", \"ENABLE_AUTH=true\",\n        \"-e\", \"AUTH_PROVIDER=github\",\n        \"-e\", \"GITHUB_CLIENT_ID\",\n        \"-e\", \"GITHUB_CLIENT_SECRET\",\n        \"-e\", \"GITHUB_ORG=kafka-schema-mcp-demos\",\n        \"-e\", \"SCHEMA_REGISTRY_NAME_1=development\",\n        \"-e\", \"SCHEMA_REGISTRY_URL_1=http://dev-registry:8081\",\n        \"-e\", \"SCHEMA_REGISTRY_NAME_2=staging\", \n        \"-e\", \"SCHEMA_REGISTRY_URL_2=http://staging-registry:8081\",\n        \"-e\", \"SCHEMA_REGISTRY_NAME_3=production\",\n        \"-e\", \"SCHEMA_REGISTRY_URL_3=http://prod-registry:8081\",\n        \"-e\", \"READONLY_3=true\",\n        \"aywengo/kafka-schema-reg-mcp:stable\"\n      ],\n      \"env\": {\n        \"GITHUB_CLIENT_ID\": \"your_github_client_id\",\n        \"GITHUB_CLIENT_SECRET\": \"your_github_client_secret\"\n      }\n    }\n  }\n}\n```\n\n## 📦 Services Overview\n\n| Service | URL | Purpose | Auth Required |\n|---------|-----|---------|---------------|\n| **Demo UI** | http://localhost:3000 | Interactive web interface | GitHub OAuth |\n| **MCP Server** | http://localhost:38000 | Main API endpoint | GitHub Token |\n| **Dev Registry** | http://localhost:8081 | Development schema registry | Internal |\n| **Staging Registry** | http://localhost:8082 | Staging schema registry | Internal |\n| **Production Registry** | http://localhost:8083 | Production schema registry | Internal |\n| **Monitoring** | http://localhost:9090 | Prometheus metrics | None |\n| **Dashboards** | http://localhost:3001 | Grafana dashboards | admin/admin123 |\n\n## 🔍 Testing GitHub OAuth\n\n### Get Your GitHub Token\n```bash\n# Personal Access Token (for testing)\n# Go to GitHub Settings → Developer settings → Personal access tokens\n# Create token with repo, public_repo, and admin:org scopes\nexport GITHUB_TOKEN=\"ghp_your_token_here\"\n```\n\n### Test Different Permission Levels\n```bash\n# Test public access\ncurl -H \"Authorization: Bearer $GITHUB_TOKEN\" \\\n  http://localhost:38000/subjects\n\n# Test write access\ncurl -X POST http://localhost:38000/schemas \\\n  -H \"Authorization: Bearer $GITHUB_TOKEN\" \\\n  -H \"Content-Type: application/json\" \\\n  -d '{\"registry\":\"development\",\"subject\":\"test\",\"schema\":{\"type\":\"string\"}}'\n\n# Check your permissions\ncurl -H \"Authorization: Bearer $GITHUB_TOKEN\" \\\n  http://localhost:38000/auth/user\n```\n\n## 🚀 Benefits of GitHub OAuth Integration\n\n### For Developers\n- **Familiar Flow**: Same OAuth they use for other dev tools\n- **No Extra Accounts**: Use existing GitHub identity\n- **Permission Inheritance**: Automatically inherit org/team permissions\n\n### For Organizations  \n- **Centralized Access**: Manage all access through GitHub teams\n- **Audit Trail**: GitHub provides complete authentication logs\n- **Fine-Grained Control**: Repo-level and org-level permissions\n\n### For Demo Experience\n- **Realistic**: Authentic OAuth flow developers expect\n- **Simplified Setup**: No separate OAuth provider to configure\n- **Better Performance**: Faster startup without Keycloak\n\n## 📚 Next Steps\n\n1. **Create GitHub Organization**: `kafka-schema-mcp-demos`\n2. **Set Up Teams**: Configure read/write/admin teams\n3. **Deploy to Cloud**: Public demo with custom domain\n4. **Community Building**: Invite users to try the demo\n\n---\n\n🎉 **Experience the power of Schema Registry management with familiar GitHub authentication!**\n\n📱 **Join our GitHub organization**: [kafka-schema-mcp-demos](https://github.com/kafka-schema-mcp-demos) (to be created)\n\n⭐ **Star this repository** to help others discover this demo!\n\n🐛 **Report issues**: [GitHub Issues](https://github.com/aywengo/demo-deployment/issues)"
+# Kafka Schema Registry MCP Demo - GitHub OAuth Edition
+
+🚀 **Complete demo environment for the Kafka Schema Registry MCP Server with GitHub OAuth**
+
+This repository contains everything needed to deploy a comprehensive demo showcasing the capabilities of the [Kafka Schema Registry MCP Server](https://github.com/aywengo/kafka-schema-reg-mcp) with **GitHub OAuth authentication**, multi-registry support, and real-world use cases.
+
+## 🎯 What's New: GitHub OAuth Integration
+
+### Why GitHub OAuth?
+- **Developer-Friendly**: Most developers already have GitHub accounts
+- **Simplified Setup**: No need to run separate OAuth provider
+- **Real OAuth Flows**: Authentic OAuth experience developers understand
+- **Organization Integration**: Natural fit with GitHub organization membership
+- **Production Ready**: Battle-tested OAuth provider
+
+### OAuth Scopes Mapping
+| GitHub Scope | MCP Permission | Description |
+|--------------|----------------|-------------|
+| `public_repo` | `read` | View public schemas and configurations |
+| `repo` | `write` | Register schemas, update configs (+ read) |
+| `admin:org` | `admin` | Delete subjects, manage registries (+ write + read) |
+
+## 🏗️ Architecture Overview
+```
+┌─────────────────┐    ┌──────────────────┐    ┌─────────────────┐
+│   Development   │    │     Staging      │    │   Production    │
+│   Registry      │    │    Registry      │    │    Registry     │
+│   :8081         │    │     :8082        │    │     :8083       │
+│   (Full Access) │    │ (Limited Write)  │    │   (Read-Only)   │
+└─────────────────┘    └──────────────────┘    └─────────────────┘
+         │                       │                       │
+         └───────────────────────┼───────────────────────┘
+                                 │
+                    ┌─────────────────────────┐
+                    │       MCP Server        │
+                    │   (Multi-Registry)      │
+                    │   GitHub OAuth          │
+                    │      :38000             │
+                    └─────────────────────────┘
+                                 │
+                    ┌─────────────────────────┐
+                    │    GitHub OAuth         │
+                    │   (github.com)          │
+                    │   User Authentication   │
+                    └─────────────────────────┘
+```
+
+## 🚀 Quick Start
+
+### Prerequisites
+- Docker and Docker Compose
+- GitHub account
+- 6GB+ RAM (reduced from 8GB - no Keycloak needed!)
+- Ports 3000, 8081-8083, 9090-9092, 38000 available
+
+### 1. Create GitHub OAuth App
+
+1. Go to GitHub Settings → Developer settings → OAuth Apps
+2. Click "New OAuth App"
+3. Fill in:
+   - **Application name**: `Kafka Schema Registry MCP Demo`
+   - **Homepage URL**: `http://localhost:3000`
+   - **Authorization callback URL**: `http://localhost:38000/auth/callback`
+4. Copy the **Client ID** and **Client Secret**
+
+### 2. Clone and Configure
+```bash
+# Clone the repository
+git clone https://github.com/aywengo/demo-deployment.git
+cd demo-deployment
+
+# Create environment file
+cp .env.example .env
+
+# Edit .env with your GitHub OAuth credentials
+vim .env  # Add your GITHUB_CLIENT_ID and GITHUB_CLIENT_SECRET
+```
+
+### 3. Start the Demo
+```bash
+# Start the complete demo environment
+docker-compose -f docker-compose.github-oauth.yml up -d
+
+# Wait for services to be ready (1-2 minutes, faster without Keycloak!)
+docker-compose ps
+```
+
+### 4. Load Demo Data
+```bash
+# Populate with realistic demo schemas
+./scripts/setup-demo-data.sh
+```
+
+## 🔐 GitHub OAuth Authentication Flow
+
+### User Experience
+1. **Access Demo**: Visit http://localhost:3000
+2. **Login with GitHub**: Click "Sign in with GitHub"
+3. **Authorize Application**: Grant permissions to the demo app
+4. **Access Based on Permissions**: Different features based on GitHub scopes
+
+### Permission Levels
+```bash
+# Public Repository Access (Read-Only)
+# GitHub users with public_repo scope
+curl -H "Authorization: Bearer github_token_public" \
+  http://localhost:38000/subjects
+
+# Private Repository Access (Read + Write)
+# GitHub users with repo scope  
+curl -X POST http://localhost:38000/schemas \
+  -H "Authorization: Bearer github_token_repo" \
+  -d '{"registry":"development","subject":"test","schema":{"type":"string"}}'
+
+# Organization Admin (Full Access)
+# GitHub organization owners/admins
+curl -X DELETE http://localhost:38000/subjects/test \
+  -H "Authorization: Bearer github_token_admin"
+```
+
+## 🎭 Demo Scenarios with GitHub OAuth
+
+### Scenario 1: Open Source Contributor (public_repo)
+**Persona**: Community member contributing to public schemas
+
+```bash
+# Login as GitHub user with public_repo access
+# Can view all public schemas and registries
+curl -H "Authorization: Bearer $GITHUB_TOKEN" \
+  http://localhost:38000/subjects?registry=development
+
+# Can export schemas for documentation
+curl -H "Authorization: Bearer $GITHUB_TOKEN" \
+  "http://localhost:38000/export/schema/user-profile?registry=development&context=ecommerce"
+```
+
+### Scenario 2: Development Team Member (repo)
+**Persona**: Team member working on schema evolution
+
+```bash
+# Can register and modify schemas
+curl -X POST http://localhost:38000/schemas \
+  -H "Authorization: Bearer $GITHUB_TOKEN" \
+  -d '{
+    "registry": "development",
+    "context": "ecommerce",
+    "subject": "product-events",
+    "schema": {
+      "type": "record",
+      "name": "ProductEvent",
+      "fields": [
+        {"name": "product_id", "type": "string"},
+        {"name": "event_type", "type": "string"},
+        {"name": "timestamp", "type": "long"}
+      ]
+    }
+  }'
+
+# Can test compatibility
+curl -X POST http://localhost:38000/compatibility \
+  -H "Authorization: Bearer $GITHUB_TOKEN" \
+  -d '{...schema_evolution...}'
+```
+
+### Scenario 3: Platform Administrator (admin:org)
+**Persona**: Organization owner managing production schemas
+
+```bash
+# Can manage production registries
+curl -X POST http://localhost:38000/migrate \
+  -H "Authorization: Bearer $GITHUB_TOKEN" \
+  -d '{
+    "source_registry": "staging",
+    "target_registry": "production",
+    "subject": "user-profile",
+    "migrate_all_versions": true
+  }'
+
+# Can delete subjects (with admin permissions)
+curl -X DELETE "http://localhost:38000/subjects/old-schema?registry=development" \
+  -H "Authorization: Bearer $GITHUB_TOKEN"
+```
+
+## 🌟 GitHub Organization Integration
+
+### Organization-Based Access Control
+```yaml
+# .env configuration
+GITHUB_ORG=kafka-schema-mcp-demos
+GITHUB_TEAM_READ=community
+GITHUB_TEAM_WRITE=developers  
+GITHUB_TEAM_ADMIN=maintainers
+```
+
+### Team Permissions
+- **@kafka-schema-mcp-demos/community**: Read access to all schemas
+- **@kafka-schema-mcp-demos/developers**: Write access to dev/staging
+- **@kafka-schema-mcp-demos/maintainers**: Full admin access
+
+## 🛠️ Updated Claude Desktop Configuration
+
+```json
+{
+  "mcpServers": {
+    "kafka-schema-registry-demo": {
+      "command": "docker",
+      "args": [
+        "run", "--rm", "-i",
+        "--network", "kafka-schema-mcp-demo",
+        "-e", "ENABLE_AUTH=true",
+        "-e", "AUTH_PROVIDER=github",
+        "-e", "GITHUB_CLIENT_ID",
+        "-e", "GITHUB_CLIENT_SECRET",
+        "-e", "GITHUB_ORG=kafka-schema-mcp-demos",
+        "-e", "SCHEMA_REGISTRY_NAME_1=development",
+        "-e", "SCHEMA_REGISTRY_URL_1=http://dev-registry:8081",
+        "-e", "SCHEMA_REGISTRY_NAME_2=staging", 
+        "-e", "SCHEMA_REGISTRY_URL_2=http://staging-registry:8081",
+        "-e", "SCHEMA_REGISTRY_NAME_3=production",
+        "-e", "SCHEMA_REGISTRY_URL_3=http://prod-registry:8081",
+        "-e", "READONLY_3=true",
+        "aywengo/kafka-schema-reg-mcp:stable"
+      ],
+      "env": {
+        "GITHUB_CLIENT_ID": "your_github_client_id",
+        "GITHUB_CLIENT_SECRET": "your_github_client_secret"
+      }
+    }
+  }
+}
+```
+
+## 📦 Services Overview
+
+| Service | URL | Purpose | Auth Required |
+|---------|-----|---------|---------------|
+| **Demo UI** | http://localhost:3000 | Interactive web interface | GitHub OAuth |
+| **MCP Server** | http://localhost:38000 | Main API endpoint | GitHub Token |
+| **Dev Registry** | http://localhost:8081 | Development schema registry | Internal |
+| **Staging Registry** | http://localhost:8082 | Staging schema registry | Internal |
+| **Production Registry** | http://localhost:8083 | Production schema registry | Internal |
+| **Monitoring** | http://localhost:9090 | Prometheus metrics | None |
+| **Dashboards** | http://localhost:3001 | Grafana dashboards | admin/admin123 |
+
+## 🔍 Testing GitHub OAuth
+
+### Get Your GitHub Token
+```bash
+# Personal Access Token (for testing)
+# Go to GitHub Settings → Developer settings → Personal access tokens
+# Create token with repo, public_repo, and admin:org scopes
+export GITHUB_TOKEN="ghp_your_token_here"
+```
+
+### Test Different Permission Levels
+```bash
+# Test public access
+curl -H "Authorization: Bearer $GITHUB_TOKEN" \
+  http://localhost:38000/subjects
+
+# Test write access
+curl -X POST http://localhost:38000/schemas \
+  -H "Authorization: Bearer $GITHUB_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"registry":"development","subject":"test","schema":{"type":"string"}}'
+
+# Check your permissions
+curl -H "Authorization: Bearer $GITHUB_TOKEN" \
+  http://localhost:38000/auth/user
+```
+
+## 🚀 Benefits of GitHub OAuth Integration
+
+### For Developers
+- **Familiar Flow**: Same OAuth they use for other dev tools
+- **No Extra Accounts**: Use existing GitHub identity
+- **Permission Inheritance**: Automatically inherit org/team permissions
+
+### For Organizations  
+- **Centralized Access**: Manage all access through GitHub teams
+- **Audit Trail**: GitHub provides complete authentication logs
+- **Fine-Grained Control**: Repo-level and org-level permissions
+
+### For Demo Experience
+- **Realistic**: Authentic OAuth flow developers expect
+- **Simplified Setup**: No separate OAuth provider to configure
+- **Better Performance**: Faster startup without Keycloak
+
+## 📚 Next Steps
+
+1. **Create GitHub Organization**: `kafka-schema-mcp-demos`
+2. **Set Up Teams**: Configure read/write/admin teams
+3. **Deploy to Cloud**: Public demo with custom domain
+4. **Community Building**: Invite users to try the demo
+
+---
+
+🎉 **Experience the power of Schema Registry management with familiar GitHub authentication!**
+
+📱 **Join our GitHub organization**: [kafka-schema-mcp-demos](https://github.com/kafka-schema-mcp-demos) (to be created)
+
+⭐ **Star this repository** to help others discover this demo!
+
+🐛 **Report issues**: [GitHub Issues](https://github.com/aywengo/demo-deployment/issues)
