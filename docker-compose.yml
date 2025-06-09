@@ -137,7 +137,7 @@ services:
   # ===========================================
   
   mcp-server:
-    image: aywengo/kafka-schema-reg-mcp:stable
+    image: aywengo/kafka-schema-reg-mcp:v2.0.0-rc1
     container_name: demo-mcp-server
     depends_on:
       dev-registry:
