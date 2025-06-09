@@ -252,7 +252,7 @@ show_claude_config() {
         "-e", "SCHEMA_REGISTRY_NAME_3=production",
         "-e", "SCHEMA_REGISTRY_URL_3=http://prod-registry:8081",
         "-e", "READONLY_3=true",
-        "aywengo/kafka-schema-reg-mcp:stable"
+        "kafka-schema-reg-mcp-demos/kafka-schema-reg-mcp:stable"
       ]
     }
   }

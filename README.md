@@ -2,7 +2,7 @@
 
 🚀 **Complete demo environment for the Kafka Schema Registry MCP Server with GitHub OAuth**
 
-This repository contains everything needed to deploy a comprehensive demo showcasing the capabilities of the [Kafka Schema Registry MCP Server](https://github.com/aywengo/kafka-schema-reg-mcp) with **GitHub OAuth authentication**, multi-registry support, and real-world use cases.
+This repository contains everything needed to deploy a comprehensive demo showcasing the capabilities of the [Kafka Schema Registry MCP Server](https://github.com/kafka-schema-reg-mcp-demos/kafka-schema-reg-mcp) with **GitHub OAuth authentication**, multi-registry support, and real-world use cases.
 
 ## 🎯 What's New: GitHub OAuth Integration
 
@@ -66,7 +66,7 @@ This repository contains everything needed to deploy a comprehensive demo showca
 ### 2. Clone and Configure
 ```bash
 # Clone the repository
-git clone https://github.com/aywengo/demo-deployment.git
+git clone https://github.com/kafka-schema-reg-mcp-demos/demo-deployment.git
 cd demo-deployment
 
 # Create environment file
@@ -219,7 +219,7 @@ GITHUB_TEAM_ADMIN=maintainers
         "-e", "SCHEMA_REGISTRY_NAME_3=production",
         "-e", "SCHEMA_REGISTRY_URL_3=http://prod-registry:8081",
         "-e", "READONLY_3=true",
-        "aywengo/kafka-schema-reg-mcp:stable"
+        "kafka-schema-reg-mcp-demos/kafka-schema-reg-mcp:stable"
       ],
       "env": {
         "GITHUB_CLIENT_ID": "your_github_client_id",
@@ -297,8 +297,8 @@ curl -H "Authorization: Bearer $GITHUB_TOKEN" \
 
 🎉 **Experience the power of Schema Registry management with familiar GitHub authentication!**
 
-📱 **Join our GitHub organization**: [kafka-schema-reg-mcp-demos](https://github.com/kafka-schema-reg-mcp-demos) (to be created)
+📱 **Join our GitHub organization**: [kafka-schema-reg-mcp-demos](https://github.com/kafka-schema-reg-mcp-demos)
 
 ⭐ **Star this repository** to help others discover this demo!
 
-🐛 **Report issues**: [GitHub Issues](https://github.com/aywengo/demo-deployment/issues)
+🐛 **Report issues**: [GitHub Issues](https://github.com/kafka-schema-reg-mcp-demos/demo-deployment/issues)
