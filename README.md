@@ -2,7 +2,7 @@
 
 🚀 **Complete demo environment for the Kafka Schema Registry MCP Server with GitHub OAuth**
 
-This repository contains everything needed to deploy a comprehensive demo showcasing the capabilities of the [Kafka Schema Registry MCP Server](https://github.com/kafka-schema-reg-mcp-demos/kafka-schema-reg-mcp) with **GitHub OAuth authentication**, multi-registry support, and real-world use cases.
+This repository contains everything needed to deploy a comprehensive demo showcasing the capabilities of the [Kafka Schema Registry MCP Server](https://github.com/kafka-schema-reg-mcp-demos/kafka-schema-reg-mcp) with **GitHub OAuth authentication**, multi-registry support, and **compatibility with any MCP-enabled IDE or AI assistant**.
 
 ## 🎯 What's New: GitHub OAuth Integration
 
@@ -20,29 +20,86 @@ This repository contains everything needed to deploy a comprehensive demo showca
 | `repo` | `write` | Register schemas, update configs (+ read) |
 | `admin:org` | `admin` | Delete subjects, manage registries (+ write + read) |
 
+## 🔌 MCP Client Compatibility
+
+The **Model Context Protocol (MCP)** ensures this demo works seamlessly with any MCP-compatible client:
+
+### **🎨 Supported AI Clients & IDEs**
+
+<table>
+<tr>
+<td width="25%" align="center">
+<h4>🤖 Claude Desktop</h4>
+<p><strong>Status:</strong> ✅ Full Support</p>
+<ul>
+<li>Native MCP integration</li>
+<li>Natural language commands</li>
+<li>Multi-registry support</li>
+<li>GitHub OAuth integration</li>
+</ul>
+</td>
+<td width="25%" align="center">
+<h4>💻 VS Code + Copilot</h4>
+<p><strong>Status:</strong> ✅ Agent Mode (Preview)</p>
+<ul>
+<li>GitHub Copilot agent mode</li>
+<li>Workspace/user configuration</li>
+<li>Tool integration in chat</li>
+<li>Auto-discovery support</li>
+</ul>
+</td>
+<td width="25%" align="center">
+<h4>⚡ Cursor IDE</h4>
+<p><strong>Status:</strong> ✅ Full Support</p>
+<ul>
+<li>One-click MCP installation</li>
+<li>Project/global configuration</li>
+<li>Agent & Composer modes</li>
+<li>OAuth server support</li>
+</ul>
+</td>
+<td width="25%" align="center">
+<h4>🧠 JetBrains IDEs</h4>
+<p><strong>Status:</strong> ✅ Full Support (2025.1+)</p>
+<ul>
+<li>IntelliJ IDEA, PyCharm, WebStorm</li>
+<li>AI Assistant integration</li>
+<li>Codebase-mode support</li>
+<li>MCP proxy support</li>
+</ul>
+</td>
+</tr>
+</table>
+
+### **🌐 Additional MCP Clients**
+- **Microsoft Copilot Studio**: Enterprise-grade MCP integration
+- **Eclipse IDE**: Copilot with MCP support  
+- **Xcode**: GitHub Copilot agent mode
+- **Emacs**: MCP client with gptel/llm integration
+- **Warp Terminal**: AI-powered terminal with MCP
+- **And many more**: [See full list →](https://modelcontextprotocol.io/clients)
+
 ## 🏗️ Architecture Overview
 ```
-┌─────────────────┐    ┌──────────────────┐    ┌─────────────────┐
-│   Development   │    │     Staging      │    │   Production    │
-│   Registry      │    │    Registry      │    │    Registry     │
-│   :8081         │    │     :8082        │    │     :8083       │
-│   (Full Access) │    │ (Limited Write)  │    │   (Read-Only)   │
-└─────────────────┘    └──────────────────┘    └─────────────────┘
-         │                       │                       │
-         └───────────────────────┼───────────────────────┘
-                                 │
-                    ┌─────────────────────────┐
-                    │       MCP Server        │
-                    │   (Multi-Registry)      │
-                    │   GitHub OAuth          │
-                    │      :38000             │
-                    └─────────────────────────┘
-                                 │
-                    ┌─────────────────────────┐
-                    │    GitHub OAuth         │
-                    │   (github.com)          │
-                    │   User Authentication   │
-                    └─────────────────────────┘
+┌─────────────────────────────────────────────────────────────────┐
+│                     MCP-Compatible Clients                      │
+│  Claude Desktop │ VS Code Copilot │ Cursor │ JetBrains │ Others │
+└─────────────────────┬───────────────────────────────────────────┘
+                      │ MCP Protocol
+┌─────────────────────▼───────────────────────────────────────────┐
+│                  MCP Server (GitHub OAuth)                      │
+│  ┌─────────────┐ ┌─────────────┐  ┌─────────────┐ ┌──────────┐  │
+│  │   Schema    │ │  Context    │  │   Config    │ │   Mode   │  │
+│  │ Management  │ │ Management  │  │ Management  │ │ Control  │  │
+│  └─────────────┘ └─────────────┘  └─────────────┘ └──────────┘  │
+└─────────────┬───────────────┬───────────────┬───────────────────┘
+              │               │               │
+    ┌─────────▼─────────┐ ┌───▼────────┐ ┌───▼──────────┐
+    │   Development     │ │  Staging   │ │ Production   │
+    │   Registry        │ │  Registry  │ │   Registry   │
+    │   :8081           │ │   :8082    │ │    :8083     │
+    │ (Full Access)     │ │ (Limited)  │ │ (Read-Only)  │
+    └───────────────-───┘ └────────────┘ └──────────────┘
 ```
 
 ## 🚀 Quick Start
@@ -50,6 +107,7 @@ This repository contains everything needed to deploy a comprehensive demo showca
 ### Prerequisites
 - Docker and Docker Compose
 - GitHub account
+- **Any MCP-compatible IDE/AI client** (see supported clients above)
 - 6GB+ RAM (reduced from 8GB - no Keycloak needed!)
 - Ports 3000, 8081-8083, 9090-9092, 38000 available
 
@@ -197,7 +255,9 @@ GITHUB_TEAM_ADMIN=maintainers
 - **@kafka-schema-reg-mcp-demos/developers**: Write access to dev/staging
 - **@kafka-schema-reg-mcp-demos/maintainers**: Full admin access
 
-## 🛠️ Updated Claude Desktop Configuration
+## 🛠️ MCP Client Configuration Examples
+
+### Claude Desktop Configuration
 
 ```json
 {
@@ -219,6 +279,96 @@ GITHUB_TEAM_ADMIN=maintainers
         "-e", "SCHEMA_REGISTRY_NAME_3=production",
         "-e", "SCHEMA_REGISTRY_URL_3=http://prod-registry:8081",
         "-e", "READONLY_3=true",
+        "kafka-schema-reg-mcp-demos/kafka-schema-reg-mcp:v2.0.0-rc1"
+      ],
+      "env": {
+        "GITHUB_CLIENT_ID": "your_github_client_id",
+        "GITHUB_CLIENT_SECRET": "your_github_client_secret"
+      }
+    }
+  }
+}
+```
+
+### VS Code + Copilot Configuration
+
+Create `.vscode/mcp.json` in your workspace:
+```json
+{
+  "servers": {
+    "kafka-schema-registry": {
+      "command": "docker",
+      "args": [
+        "run", "--rm", "-i",
+        "--network", "kafka-schema-mcp-demo",
+        "-e", "ENABLE_AUTH=true",
+        "-e", "AUTH_PROVIDER=github",
+        "-e", "SCHEMA_REGISTRY_NAME_1=development",
+        "-e", "SCHEMA_REGISTRY_URL_1=http://dev-registry:8081",
+        "-e", "SCHEMA_REGISTRY_NAME_2=staging",
+        "-e", "SCHEMA_REGISTRY_URL_2=http://staging-registry:8082",
+        "-e", "SCHEMA_REGISTRY_NAME_3=production",
+        "-e", "SCHEMA_REGISTRY_URL_3=http://prod-registry:8083",
+        "kafka-schema-reg-mcp-demos/kafka-schema-reg-mcp:v2.0.0-rc1"
+      ],
+      "env": {
+        "GITHUB_CLIENT_ID": "your_github_client_id",
+        "GITHUB_CLIENT_SECRET": "your_github_client_secret"
+      }
+    }
+  }
+}
+```
+
+### Cursor IDE Configuration
+
+Create `.cursor/mcp.json` in your project:
+```json
+{
+  "mcpServers": {
+    "kafka-schema-registry": {
+      "command": "docker",
+      "args": [
+        "run", "--rm", "-i",
+        "--network", "kafka-schema-mcp-demo",
+        "-e", "ENABLE_AUTH=true", 
+        "-e", "AUTH_PROVIDER=github",
+        "-e", "SCHEMA_REGISTRY_NAME_1=development",
+        "-e", "SCHEMA_REGISTRY_URL_1=http://dev-registry:8081",
+        "-e", "SCHEMA_REGISTRY_NAME_2=staging",
+        "-e", "SCHEMA_REGISTRY_URL_2=http://staging-registry:8082",
+        "-e", "SCHEMA_REGISTRY_NAME_3=production",
+        "-e", "SCHEMA_REGISTRY_URL_3=http://prod-registry:8083",
+        "kafka-schema-reg-mcp-demos/kafka-schema-reg-mcp:v2.0.0-rc1"
+      ],
+      "env": {
+        "GITHUB_CLIENT_ID": "your_github_client_id",
+        "GITHUB_CLIENT_SECRET": "your_github_client_secret"
+      }
+    }
+  }
+}
+```
+
+### JetBrains IDEs Configuration
+
+In **Settings → Tools → AI Assistant → Model Context Protocol (MCP)**:
+```json
+{
+  "servers": {
+    "kafka-schema-registry": {
+      "command": "docker",
+      "args": [
+        "run", "--rm", "-i",
+        "--network", "kafka-schema-mcp-demo",
+        "-e", "ENABLE_AUTH=true",
+        "-e", "AUTH_PROVIDER=github",
+        "-e", "SCHEMA_REGISTRY_NAME_1=development",
+        "-e", "SCHEMA_REGISTRY_URL_1=http://dev-registry:8081",
+        "-e", "SCHEMA_REGISTRY_NAME_2=staging",
+        "-e", "SCHEMA_REGISTRY_URL_2=http://staging-registry:8082",
+        "-e", "SCHEMA_REGISTRY_NAME_3=production", 
+        "-e", "SCHEMA_REGISTRY_URL_3=http://prod-registry:8083",
         "kafka-schema-reg-mcp-demos/kafka-schema-reg-mcp:v2.0.0-rc1"
       ],
       "env": {
@@ -275,16 +425,43 @@ curl -H "Authorization: Bearer $GITHUB_TOKEN" \
 - **Familiar Flow**: Same OAuth they use for other dev tools
 - **No Extra Accounts**: Use existing GitHub identity
 - **Permission Inheritance**: Automatically inherit org/team permissions
+- **Cross-IDE Support**: Works with any MCP-compatible client
 
 ### For Organizations  
 - **Centralized Access**: Manage all access through GitHub teams
 - **Audit Trail**: GitHub provides complete authentication logs
 - **Fine-Grained Control**: Repo-level and org-level permissions
+- **Cost Effective**: No separate OAuth infrastructure needed
 
 ### For Demo Experience
 - **Realistic**: Authentic OAuth flow developers expect
 - **Simplified Setup**: No separate OAuth provider to configure
 - **Better Performance**: Faster startup without Keycloak
+- **Universal Access**: Works with any MCP client
+
+## 🎯 Try It With Your Preferred IDE
+
+Once the demo is running, you can use it with any MCP-compatible client:
+
+### Quick Test Commands
+
+```
+"List all schema contexts"
+"Show me subjects in the development registry"
+"Register a test schema with name and email fields"
+"Check what registries are available"
+"Export all schemas from the ecommerce context"
+"Migrate a schema from staging to production"
+```
+
+### Client-Specific Features
+
+| Client | Special Features |
+|--------|------------------|
+| **Claude Desktop** | Native conversational interface |
+| **VS Code Copilot** | Agent mode with tool integration |
+| **Cursor** | One-click server installation |
+| **JetBrains** | Codebase-aware schema operations |
 
 ## 📚 Next Steps
 
@@ -292,10 +469,11 @@ curl -H "Authorization: Bearer $GITHUB_TOKEN" \
 2. **Set Up Teams**: Configure read/write/admin teams
 3. **Deploy to Cloud**: Public demo with custom domain
 4. **Community Building**: Invite users to try the demo
+5. **Cross-IDE Testing**: Validate with multiple MCP clients
 
 ---
 
-🎉 **Experience the power of Schema Registry management with familiar GitHub authentication!**
+🎉 **Experience the power of Schema Registry management with familiar GitHub authentication and your favorite IDE!**
 
 📱 **Join our GitHub organization**: [kafka-schema-reg-mcp-demos](https://github.com/kafka-schema-reg-mcp-demos)
 
