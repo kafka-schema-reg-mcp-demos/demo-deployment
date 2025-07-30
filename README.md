@@ -2,11 +2,18 @@
 
 🚀 **Complete demo environment for the Kafka Schema Registry MCP Server with GitHub OAuth**
 
-This repository contains everything needed to deploy a comprehensive demo showcasing the capabilities of the [Kafka Schema Registry MCP Server](https://github.com/kafka-schema-reg-mcp-demos/kafka-schema-reg-mcp) with **GitHub OAuth authentication**, multi-registry support, and **compatibility with any MCP-enabled IDE or AI assistant**.
+This repository contains everything needed to deploy a comprehensive demo showcasing the capabilities of the [Kafka Schema Registry MCP Server](https://github.com/aywengo/kafka-schema-reg-mcp) with **GitHub OAuth authentication**, multi-registry support, and **compatibility with any MCP-enabled IDE or AI assistant**.
 
-## 🎯 What's New: GitHub OAuth Integration
+## 🎯 What's New
 
-### Why GitHub OAuth?
+### Latest Features (v2.1.1)
+- **🚀 SLIM_MODE Performance**: Reduced tool count from 57+ to ~9 essential tools for optimal LLM performance
+- **🤖 Enhanced Schema Migration**: Smart migration with user preference elicitation
+- **💾 Automatic Backups**: Pre-migration backup creation
+- **✅ Post-Migration Verification**: Comprehensive schema validation
+- **🔒 Security Enhancements**: SSL/TLS certificate verification, secure logging
+
+### GitHub OAuth Integration
 - **Developer-Friendly**: Most developers already have GitHub accounts
 - **Simplified Setup**: No need to run separate OAuth provider
 - **Real OAuth Flows**: Authentic OAuth experience developers understand
@@ -87,7 +94,7 @@ The **Model Context Protocol (MCP)** ensures this demo works seamlessly with any
 └─────────────────────┬───────────────────────────────────────────┘
                       │ MCP Protocol
 ┌─────────────────────▼───────────────────────────────────────────┐
-│                  MCP Server (GitHub OAuth)                      │
+│              MCP Server (GitHub OAuth + SLIM_MODE)              │
 │  ┌─────────────┐ ┌─────────────┐  ┌─────────────┐ ┌──────────┐  │
 │  │   Schema    │ │  Context    │  │   Config    │ │   Mode   │  │
 │  │ Management  │ │ Management  │  │ Management  │ │ Control  │  │
@@ -147,6 +154,30 @@ docker-compose ps
 ```bash
 # Populate with realistic demo schemas
 ./scripts/setup-demo-data.sh
+```
+
+## 🚀 Performance Optimization with SLIM_MODE
+
+The demo runs with **SLIM_MODE** enabled by default for optimal performance:
+
+### What is SLIM_MODE?
+- **Reduces tool count** from 57+ to ~9 essential tools
+- **Significantly faster** LLM response times
+- **Lower token usage** and reduced costs
+- **Ideal for demos** and production read-only operations
+
+### Essential Tools Available in SLIM_MODE:
+- ✅ Schema registration and compatibility checking
+- ✅ Context creation and management
+- ✅ Basic export operations
+- ✅ Registry management and statistics
+- ✅ All read operations through resources
+
+### To Access Full Feature Set:
+```bash
+# Set SLIM_MODE=false in .env to access all 57+ tools
+# Useful for advanced operations like migrations and bulk updates
+SLIM_MODE=false
 ```
 
 ## 🔐 GitHub OAuth Authentication Flow
@@ -224,7 +255,7 @@ curl -X POST http://localhost:38000/compatibility \
 **Persona**: Organization owner managing production schemas
 
 ```bash
-# Can manage production registries
+# Can manage production registries (requires SLIM_MODE=false)
 curl -X POST http://localhost:38000/migrate \
   -H "Authorization: Bearer $GITHUB_TOKEN" \
   -d '{
@@ -278,8 +309,9 @@ GITHUB_TEAM_ADMIN=maintainers
         "-e", "SCHEMA_REGISTRY_URL_2=http://staging-registry:8081",
         "-e", "SCHEMA_REGISTRY_NAME_3=production",
         "-e", "SCHEMA_REGISTRY_URL_3=http://prod-registry:8081",
-        "-e", "READONLY_3=true",
-        "kafka-schema-reg-mcp-demos/kafka-schema-reg-mcp:v2.0.0-rc1"
+        "-e", "VIEWONLY_3=true",
+        "-e", "SLIM_MODE=true",
+        "aywengo/kafka-schema-reg-mcp:stable"
       ],
       "env": {
         "GITHUB_CLIENT_ID": "your_github_client_id",
@@ -309,7 +341,9 @@ Create `.vscode/mcp.json` in your workspace:
         "-e", "SCHEMA_REGISTRY_URL_2=http://staging-registry:8082",
         "-e", "SCHEMA_REGISTRY_NAME_3=production",
         "-e", "SCHEMA_REGISTRY_URL_3=http://prod-registry:8083",
-        "kafka-schema-reg-mcp-demos/kafka-schema-reg-mcp:v2.0.0-rc1"
+        "-e", "VIEWONLY_3=true",
+        "-e", "SLIM_MODE=true",
+        "aywengo/kafka-schema-reg-mcp:stable"
       ],
       "env": {
         "GITHUB_CLIENT_ID": "your_github_client_id",
@@ -339,7 +373,9 @@ Create `.cursor/mcp.json` in your project:
         "-e", "SCHEMA_REGISTRY_URL_2=http://staging-registry:8082",
         "-e", "SCHEMA_REGISTRY_NAME_3=production",
         "-e", "SCHEMA_REGISTRY_URL_3=http://prod-registry:8083",
-        "kafka-schema-reg-mcp-demos/kafka-schema-reg-mcp:v2.0.0-rc1"
+        "-e", "VIEWONLY_3=true",
+        "-e", "SLIM_MODE=true",
+        "aywengo/kafka-schema-reg-mcp:stable"
       ],
       "env": {
         "GITHUB_CLIENT_ID": "your_github_client_id",
@@ -369,7 +405,9 @@ In **Settings → Tools → AI Assistant → Model Context Protocol (MCP)**:
         "-e", "SCHEMA_REGISTRY_URL_2=http://staging-registry:8082",
         "-e", "SCHEMA_REGISTRY_NAME_3=production", 
         "-e", "SCHEMA_REGISTRY_URL_3=http://prod-registry:8083",
-        "kafka-schema-reg-mcp-demos/kafka-schema-reg-mcp:v2.0.0-rc1"
+        "-e", "VIEWONLY_3=true",
+        "-e", "SLIM_MODE=true",
+        "aywengo/kafka-schema-reg-mcp:stable"
       ],
       "env": {
         "GITHUB_CLIENT_ID": "your_github_client_id",
