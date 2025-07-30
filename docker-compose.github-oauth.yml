@@ -108,7 +108,7 @@ services:
   # ===========================================
   
   mcp-server:
-    image: aywengo/kafka-schema-reg-mcp:v2.0.0-rc1
+    image: aywengo/kafka-schema-reg-mcp:stable
     container_name: demo-mcp-server
     depends_on:
       dev-registry:
@@ -134,15 +134,18 @@ services:
       # Multi-Registry Configuration
       SCHEMA_REGISTRY_NAME_1: "development"
       SCHEMA_REGISTRY_URL_1: "http://dev-registry:8081"
-      READONLY_1: "false"
+      VIEWONLY_1: "false"
       
       SCHEMA_REGISTRY_NAME_2: "staging"
       SCHEMA_REGISTRY_URL_2: "http://staging-registry:8081"
-      READONLY_2: "false"
+      VIEWONLY_2: "false"
       
       SCHEMA_REGISTRY_NAME_3: "production"
       SCHEMA_REGISTRY_URL_3: "http://prod-registry:8081"
-      READONLY_3: "true"
+      VIEWONLY_3: "true"
+      
+      # Performance Optimization - Recommended for demos
+      SLIM_MODE: "${SLIM_MODE:-true}"
       
       # Development Mode (for local testing without OAuth)
       DEV_MODE: "${DEV_MODE:-false}"
@@ -238,3 +241,4 @@ networks:
 # ✅ Organization/team integration
 # ✅ Reduced resource usage
 # ✅ Production-ready OAuth provider
+# ✅ SLIM_MODE for better performance (v2.0.6+)
